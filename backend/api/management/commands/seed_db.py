@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 from django.contrib.auth.models import User
-from core.models import UserProfile, Skill, Career, UserSkill, CareerSkill, Course, ProjectRecommendation
+from api.models import UserProfile, Skill, Career, UserSkill, CareerSkill, Course, ProjectRecommendation
 import random
 
 class Command(BaseCommand):
@@ -35,7 +35,7 @@ class Command(BaseCommand):
         careers_data = [
             {
                 'title': 'Full Stack Developer',
-                'description': 'Builds both the frontend and backend of web applications.',
+                'description': 'Builds both the frontend and config of web applications.',
                 'req_skills': ['Python', 'Django', 'React', 'JavaScript', 'PostgreSQL']
             },
             {

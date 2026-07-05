@@ -35,7 +35,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('career', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='core.career')),
+                ('career', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='api.career')),
                 ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='roadmaps', to=settings.AUTH_USER_MODEL)),
             ],
         ),
@@ -47,7 +47,7 @@ class Migration(migrations.Migration):
                 ('description', models.TextField()),
                 ('order_no', models.IntegerField()),
                 ('status', models.CharField(default='Pending', max_length=50)),
-                ('roadmap', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='steps', to='core.roadmap')),
+                ('roadmap', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='steps', to='api.roadmap')),
             ],
         ),
         migrations.CreateModel(
@@ -56,7 +56,7 @@ class Migration(migrations.Migration):
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('title', models.CharField(max_length=255)),
                 ('description', models.TextField()),
-                ('skill', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='projects', to='core.skill')),
+                ('skill', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='projects', to='api.skill')),
             ],
         ),
         migrations.CreateModel(
@@ -66,7 +66,7 @@ class Migration(migrations.Migration):
                 ('title', models.CharField(max_length=255)),
                 ('provider', models.CharField(max_length=100)),
                 ('url', models.URLField()),
-                ('skill', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='courses', to='core.skill')),
+                ('skill', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='courses', to='api.skill')),
             ],
         ),
         migrations.CreateModel(
@@ -74,8 +74,8 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('importance_level', models.IntegerField(default=1)),
-                ('career', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='required_skills', to='core.career')),
-                ('skill', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='core.skill')),
+                ('career', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='required_skills', to='api.career')),
+                ('skill', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='api.skill')),
             ],
         ),
         migrations.CreateModel(
@@ -93,7 +93,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('proficiency_level', models.IntegerField(default=1)),
-                ('skill', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='core.skill')),
+                ('skill', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='api.skill')),
                 ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='skills', to=settings.AUTH_USER_MODEL)),
             ],
             options={
