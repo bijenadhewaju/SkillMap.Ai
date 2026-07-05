@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
-
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
 
 function App() {
   return (
@@ -9,8 +10,8 @@ function App() {
         {/* The Landing Page loads on the root URL */}
         <Route path="/" element={<LandingPage />} />
 
-        {/* Placeholder for our next task! */}
-        <Route path="/login" element={<div className="container text-center mt-5"><h2>Login UI Coming Soon</h2></div>} />
+       <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
       </Routes>
     </Router>
   );
