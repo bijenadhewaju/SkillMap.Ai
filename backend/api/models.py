@@ -1,15 +1,36 @@
 from django.db import models
 from django.contrib.auth.models import User
 
-# User Profile
+# User Profile and Education
 class UserProfile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE,related_name='profile')
-    education = models.CharField(max_length=255, blank=True, null=True)
-    experience_level = models.CharField(max_length=50, blank=True, null=True)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+
+    # Experience Tracking
+    experience_years = models.IntegerField(default=0)
+    previous_role = models.CharField(max_length=150, blank=True, null=True)
+
+    # Target Goal
+    target_career = models.ForeignKey('Career', on_delete=models.SET_NULL, null=True, blank=True,
+                                      related_name='aspiring_users')
+
     bio = models.TextField(blank=True, null=True)
 
     def __str__(self):
         return f"{self.user.username}'s Profile"
+
+class Education(models.Model):
+    STATUS_CHOICES = (
+        ('Completed', 'Completed'),
+        ('Ongoing', 'Ongoing'),
+    )
+    user_profile = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name='educations')
+    degree_level = models.CharField(max_length=100)  # e.g., B.Tech, Masters, Self-Taught
+    stream = models.CharField(max_length=150)        # e.g., Computer Science
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES)
+    timeline = models.CharField(max_length=50)       # e.g., "2023" or "6th Semester"
+
+    def __str__(self):
+        return f"{self.degree_level} in {self.stream} ({self.user_profile.user.username})"
 
 # Skills and Careers
 
