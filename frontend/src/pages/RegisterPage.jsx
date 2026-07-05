@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import {Link, useNavigate} from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 
@@ -19,6 +19,8 @@ const RegisterPage = () => {
     setError('');
   };
 
+  const navigate = useNavigate();
+
   const handleSubmit = (e) => {
     e.preventDefault();
 
@@ -28,7 +30,12 @@ const RegisterPage = () => {
       return;
     }
 
-    console.log('Registration attempt:', formData);
+    console.log('Registration successful, saving mock session token');
+  // Mock login by saving a token so the Navbar recognizes the state change
+    localStorage.setItem('access_token', 'mock-register-token');
+
+  // Directly navigate the user to the profile setup sequence
+    navigate('/profile-setup');
     // TODO: Send data to Django backend to create the User and UserProfile
   };
 

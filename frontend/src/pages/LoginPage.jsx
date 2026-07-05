@@ -17,7 +17,7 @@ const LoginPage = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     console.log('Login attempt:', formData);
-    // TODO: Send data to Django backend
+    // TODO: Send data to Django config
   };
 
   return (
