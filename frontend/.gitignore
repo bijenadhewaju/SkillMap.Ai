@@ -8,7 +8,6 @@ pnpm-debug.log*
 lerna-debug.log*
 
 .oxlintrc.json
-package.json
 package-lock.json
 node_modules
 dist
