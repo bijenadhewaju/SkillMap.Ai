@@ -3,6 +3,7 @@ from django.contrib.auth.models import User
 
 # User Profile and Education
 class UserProfile(models.Model):
+    objects = None
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
 
     # Experience Tracking
