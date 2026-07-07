@@ -2,26 +2,34 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import api from '../api';
 
 const ProfileSetupPage = () => {
   const navigate = useNavigate();
 
-  // 1. Dynamic Education State
+  // Education State
   const [educations, setEducations] = useState([
     { id: Date.now(), degree_level: '', stream: '', status: 'Completed', timeline: '' }
   ]);
 
-  // 2. Experience State
+  // Experience State
   const [experience, setExperience] = useState({ years: 0, previousRole: '' });
 
-  // 3. Target Career State
+  // Target Career State
   const [targetCareer, setTargetCareer] = useState('');
-  const careerOptions = ["Full Stack Developer", "Data Scientist", "Machine Learning Engineer", "DevOps Engineer", "Frontend Developer", "Backend Developer"];
+  const careerOptions = [
+    "Software Engineer", "Graphic Designer", "Registered Nurse",
+    "Marketing Manager", "Financial Analyst", "Teacher",
+    "Data Scientist", "Project Manager"
+  ];
 
-  // 4. Skills State (Bubbles)
+  // Skills State (Bubbles)
   const [skills, setSkills] = useState([]);
   const [skillInput, setSkillInput] = useState('');
-  const suggestedSkills = ["Python", "React", "PostgreSQL", "Docker", "JavaScript", "Django"];
+  const suggestedSkills = [
+    "Project Management", "Python", "Public Speaking",
+    "Data Analysis", "Digital Marketing", "Excel", "Leadership"
+  ];
 
   // --- Handlers ---
   const handleAddEducation = () => {
@@ -55,12 +63,24 @@ const ProfileSetupPage = () => {
     setSkills(skills.filter(skill => skill !== skillToRemove));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const finalData = { educations, experience, targetCareer, skills };
-    console.log('Saving profile data:', finalData);
-    // TODO: Send this to the Django API later
-    navigate('/roadmap');
+
+    const finalData = {
+      experience_years: experience.years,
+      previous_role: experience.previousRole,
+      target_career: targetCareer,
+      educations: educations,
+      skills: skills
+    };
+
+    try {
+      await api.patch('/api/accounts/profile/', finalData);
+      navigate('/roadmap');
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      alert('Failed to save. Please try again.');
+    }
   };
 
   return (
@@ -98,7 +118,7 @@ const ProfileSetupPage = () => {
                           </div>
                           <div className="col-md-6">
                             <label className="form-label small text-secondary fw-medium">Course / Stream</label>
-                            <input type="text" className="form-control" placeholder="e.g. Computer Science" value={edu.stream} onChange={(e) => handleEducationChange(edu.id, 'stream', e.target.value)} required />
+                            <input type="text" className="form-control" placeholder="e.g. Computer Science, Nursing" value={edu.stream} onChange={(e) => handleEducationChange(edu.id, 'stream', e.target.value)} required />
                           </div>
                           <div className="col-md-6">
                             <label className="form-label small text-secondary fw-medium">Status</label>
@@ -128,11 +148,10 @@ const ProfileSetupPage = () => {
                             <option value={3}>3+ Years</option>
                           </select>
                         </div>
-                        {/* CONDITIONAL FIELD */}
                         {experience.years > 0 && (
                           <div className="col-md-6">
                             <label className="form-label small text-secondary fw-medium">Previous / Current Role</label>
-                            <input type="text" className="form-control" placeholder="e.g. QA Tester, Support Engineer" value={experience.previousRole} onChange={(e) => setExperience({...experience, previousRole: e.target.value})} required />
+                            <input type="text" className="form-control" placeholder="e.g. Sales Associate, Intern" value={experience.previousRole} onChange={(e) => setExperience({...experience, previousRole: e.target.value})} required />
                           </div>
                         )}
                       </div>
@@ -140,7 +159,7 @@ const ProfileSetupPage = () => {
 
                     {/* SECTION 3: TARGET CAREER */}
                     <div className="mb-5">
-                      <label className="form-label fw-bold text-dark">Target Tech Career</label>
+                      <label className="form-label fw-bold text-dark">Target Career</label>
                       <input
                         type="text"
                         className="form-control"
@@ -157,9 +176,8 @@ const ProfileSetupPage = () => {
 
                     {/* SECTION 4: SKILLS (CHIPS) */}
                     <div className="mb-5">
-                      <label className="form-label fw-bold text-dark">Current Technical Skills</label>
+                      <label className="form-label fw-bold text-dark">Current Skills</label>
 
-                      {/* Interactive Skill Input Box */}
                       <div className="border rounded-3 p-2 d-flex flex-wrap gap-2 mb-3 bg-" style={{minHeight: '50px'}}>
                         {skills.map((skill, index) => (
                           <span key={index} className="badge bg-body-secondary text-dark rounded-pill px-3 py-2 d-flex align-items-center fw-normal fs-6">
@@ -178,7 +196,6 @@ const ProfileSetupPage = () => {
                         />
                       </div>
 
-                      {/* Clickable Suggestions */}
                       <div className="d-flex flex-wrap gap-2">
                         <span className="small text-muted mt-1 me-2">Suggestions:</span>
                         {suggestedSkills.filter(s => !skills.includes(s)).map((skill, i) => (

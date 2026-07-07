@@ -1,20 +1,41 @@
-import React from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import api from '../api';
+import AuthContext from '../context/AuthContext';
 
 const DashboardPage = () => {
-  // MOCK DATA: We will replace this with a real Django API call later
-  const userData = {
-    name: "Rajamati",
-    title: "Aspiring Full Stack Developer",
-    education: "BSc Computer Science",
-    experience: "Beginner",
+  const { user } = useContext(AuthContext); // Get the real logged-in user
+  const [profileData, setProfileData] = useState(null);
+
+  // Fetch the real data from Django when the page loads
+useEffect(() => {
+  const fetchProfile = async () => {
+    try {
+      const response = await api.get('/api/accounts/profile/');
+      setProfileData(response.data);
+    } catch (error) {
+      console.error("Failed to fetch profile", error);
+    }
   };
+  fetchProfile();
+}, []);
 
-  const currentSkills = ["Python", "React", "JavaScript", "Git"];
-  const targetCareer = "Full Stack Developer";
+  // Merge the real API data with fallbacks so your UI stays intact
+const displayData = {
+  name: user?.username || "Explorer",
+  title: profileData?.target_career || "Aspiring Professional",
+  education: profileData?.educations?.length > 0
+    ? profileData.educations.map(e => e.stream).join(', ')
+    : "No education added",
+  experience: profileData?.experience_years ? `${profileData.experience_years} Years` : "Beginner",
+};
+
+  const currentSkills = profileData?.skills || ["Python", "React", "JavaScript", "Git"];
+  const targetCareer = profileData?.target_career || "Full Stack Developer";
+
+  // MOCK DATA for now: These will be replaced by the choices they make on RoadmapPage
   const missingSkills = ["Django", "PostgreSQL", "Docker"];
-
   const roadmap = [
     { id: 1, title: "Master Backend with Django", type: "Course", status: "In Progress" },
     { id: 2, title: "Build a REST API", type: "Project", status: "Pending" },
@@ -31,7 +52,7 @@ const DashboardPage = () => {
 
           <div className="row mb-4">
             <div className="col-12">
-              <h2 className="fw-bold text-dark">Welcome back, {userData.name}! 👋</h2>
+              <h2 className="fw-bold text-dark">Welcome back, {displayData.name}! </h2>
               <p className="text-secondary">Here is your personalized skill map and learning progress.</p>
             </div>
           </div>
@@ -45,16 +66,16 @@ const DashboardPage = () => {
                 <div className="card-body p-4">
                   <div className="d-flex align-items-center mb-3">
                     <div className="bg-brand-dark text-white rounded-circle d-flex align-items-center justify-content-center fw-bold fs-4" style={{width: '60px', height: '60px'}}>
-                      {userData.name.charAt(0)}
+                      {displayData.name.charAt(0).toUpperCase()}
                     </div>
                     <div className="ms-3">
-                      <h5 className="fw-bold mb-0">{userData.name}</h5>
-                      <span className="badge bg-light text-dark border mt-1">{userData.experience}</span>
+                      <h5 className="fw-bold mb-0">{displayData.name}</h5>
+                      <span className="badge bg-light text-dark border mt-1">{displayData.experience}</span>
                     </div>
                   </div>
                   <hr className="text-muted" />
-                  <p className="small text-secondary mb-1"><strong>Education:</strong> {userData.education}</p>
-                  <p className="small text-secondary mb-0"><strong>Target:</strong> {userData.title}</p>
+                  <p className="small text-secondary mb-1"><strong>Education:</strong> {displayData.education}</p>
+                  <p className="small text-secondary mb-0"><strong>Target:</strong> {displayData.title}</p>
                   <button className="btn btn-outline-brand btn-sm w-100 mt-3">Edit Profile</button>
                 </div>
               </div>
@@ -85,7 +106,7 @@ const DashboardPage = () => {
               <div className="card border-0 shadow-sm rounded-3 mb-4 bg-white">
                 <div className="card-body p-4">
                   <div className="d-flex justify-content-between align-items-center mb-4">
-                    <h5 className="fw-bold mb-0 text-brand">🤖 AI Skill Gap Analysis</h5>
+                    <h5 className="fw-bold mb-0 text-brand">AI Skill Gap Analysis</h5>
                     <span className="badge bg-soft text-brand border border-primary">Target: {targetCareer}</span>
                   </div>
 
@@ -106,7 +127,7 @@ const DashboardPage = () => {
               {/* Personalized Roadmap */}
               <div className="card border-0 shadow-sm rounded-3 bg-white">
                 <div className="card-body p-4">
-                  <h5 className="fw-bold mb-4 text-brand">🗺️ Your Learning Roadmap</h5>
+                  <h5 className="fw-bold mb-4 text-brand"> Your Learning Roadmap</h5>
 
                   <div className="roadmap-timeline">
                     {roadmap.map((step) => (

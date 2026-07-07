@@ -1,6 +1,5 @@
 name: Frontend CI
 
-# Only trigger if code inside the /frontend folder is changed
 on:
   push:
     branches: [ "main" ]
@@ -34,3 +33,6 @@ jobs:
       run: |
         cd frontend
         npm run build
+
+    - name: Success
+      run: echo "frontend ci passed successfully!"
