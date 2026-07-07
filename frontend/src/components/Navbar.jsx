@@ -1,21 +1,11 @@
-import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useContext } from 'react';
+import { Link } from 'react-router-dom';
 import logoStr from '../assets/logo_str.svg';
+import AuthContext from '../context/AuthContext';
 
 const Navbar = () => {
-  const navigate = useNavigate();
-
-  // Basic check: if a token exists, we assume the user is logged in.
-  const isAuthenticated = !!localStorage.getItem('access_token');
-
-  const handleLogout = () => {
-    // 1. Remove the tokens from local storage
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-
-    // 2. Redirect the user back to the login page
-    navigate('/login');
-  };
+  // Pull user state and logout function directly from Context
+  const { user, logoutUser } = useContext(AuthContext);
 
   return (
     <nav className="navbar navbar-expand-lg navbar-light bg-white fixed-top shadow-sm">
@@ -35,31 +25,31 @@ const Navbar = () => {
             <li className="nav-item"><a className="nav-link px-3 text-dark" href="/#workflow">How It Works</a></li>
             <li className="nav-item"><a className="nav-link px-3 text-dark" href="/#about">About</a></li>
 
-            {/* Conditional Rendering based on Authentication state */}
-          {isAuthenticated ? (
-            <>
-              <li className="nav-item">
-                <Link className="nav-link px-3 text-dark" to="/profile-setup">Profile</Link>
-              </li>
-              <li className="nav-item">
-                <Link className="nav-link px-3 text-dark" to="/dashboard">Dashboard</Link>
-              </li>
-              <li className="nav-item ms-lg-3">
-                <button onClick={handleLogout} className="btn btn-outline-danger px-4">
-                  Logout
-                </button>
-              </li>
-            </>
-          ) : (
-            <>
-              <li className="nav-item ms-lg-3">
-                <Link className="btn btn-outline-brand px-4 me-2" to="/login">Login</Link>
-              </li>
-              <li className="nav-item">
-                <Link className="btn btn-brand px-4" to="/register">Sign Up</Link>
-              </li>
-            </>
-          )}
+            {/* Render based on actual global AuthContext state */}
+            {user ? (
+              <>
+                <li className="nav-item">
+                  <Link className="nav-link px-3 text-dark" to="/profile-setup">Profile</Link>
+                </li>
+                <li className="nav-item">
+                  <Link className="nav-link px-3 text-dark" to="/dashboard">Dashboard</Link>
+                </li>
+                <li className="nav-item ms-lg-3">
+                  <button onClick={logoutUser} className="btn btn-outline-danger px-4">
+                    Logout
+                  </button>
+                </li>
+              </>
+            ) : (
+              <>
+                <li className="nav-item ms-lg-3">
+                  <Link className="btn btn-outline-brand px-4 me-2" to="/login">Login</Link>
+                </li>
+                <li className="nav-item">
+                  <Link className="btn btn-brand px-4" to="/register">Sign Up</Link>
+                </li>
+              </>
+            )}
           </ul>
         </div>
       </div>

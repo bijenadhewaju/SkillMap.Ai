@@ -1,30 +1,41 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useContext } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import AuthContext from '../context/AuthContext';
 
 const LoginPage = () => {
-  // use these state variables later when connecting to Django
   const [formData, setFormData] = useState({
-    email: '',
+    email: '', // Using username for Django JWT auth
     password: ''
   });
 
+  const [error, setError] = useState(null);
+  const { loginUser } = useContext(AuthContext);
+  const navigate = useNavigate();
+
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+    setError(null);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Login attempt:', formData);
-    // TODO: Send data to Django config
+
+    // Call the global login function
+    const result = await loginUser(formData.email, formData.password);
+
+    if (result.success) {
+      navigate('/');
+    } else {
+      setError(result.message);
+    }
   };
 
   return (
     <div className="d-flex flex-column min-vh-100 bg-soft">
       <Navbar />
 
-      {/* --main area--*/}
       <main className="flex-grow-1 d-flex align-items-center justify-content-center pt-5 mt-5 pb-5">
         <div className="container">
           <div className="row justify-content-center">
@@ -35,8 +46,11 @@ const LoginPage = () => {
                   <h3 className="fw-bold text-center text-brand mb-1">Welcome Back</h3>
                   <p className="text-center text-secondary mb-4 small">Log in to continue your learning journey.</p>
 
+                  {error && <div className="alert alert-danger py-2 small">{error}</div>}
+
                   <form onSubmit={handleSubmit}>
                     <div className="mb-3">
+                      {/* 3. Update the label and input to Email */}
                       <label className="form-label fw-medium text-dark small">Email Address</label>
                       <input
                         type="email"

@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
-import {Link, useNavigate} from 'react-router-dom';
+import React, { useState, useContext } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import api from '../api';
+import AuthContext from '../context/AuthContext';
 
 const RegisterPage = () => {
   const [formData, setFormData] = useState({
@@ -12,31 +14,38 @@ const RegisterPage = () => {
   });
 
   const [error, setError] = useState('');
+  const navigate = useNavigate();
+  const { loginUser } = useContext(AuthContext);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
-    // Clear error message when user starts typing again
     setError('');
   };
 
-  const navigate = useNavigate();
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Basic frontend validation
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match.');
       return;
     }
 
-    console.log('Registration successful, saving mock session token');
-  // Mock login by saving a token so the Navbar recognizes the state change
-    localStorage.setItem('access_token', 'mock-register-token');
+    try {
+      // 1. Create the account in Django
+      await api.post('/api/accounts/register/', {
+        username: formData.username,
+        email: formData.email,
+        password: formData.password
+      });
 
-  // Directly navigate the user to the profile setup sequence
-    navigate('/profile-setup');
-    // TODO: Send data to Django backend to create the User and UserProfile
+      // 2. Automatically log the user in
+      await loginUser(formData.username, formData.password);
+
+      // 3. Send them to setup their profile
+      navigate('/profile-setup');
+    } catch (err) {
+      setError('Failed to register. Username or email might already be taken.');
+    }
   };
 
   return (
@@ -53,7 +62,6 @@ const RegisterPage = () => {
                   <h3 className="fw-bold text-center text-brand mb-1">Create an Account</h3>
                   <p className="text-center text-secondary mb-4 small">Start mapping your tech career today.</p>
 
-                  {/* Display error message if passwords don't match */}
                   {error && <div className="alert alert-danger py-2 small">{error}</div>}
 
                   <form onSubmit={handleSubmit}>
