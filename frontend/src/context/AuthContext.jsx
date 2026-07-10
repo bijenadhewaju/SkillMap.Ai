@@ -4,6 +4,7 @@ import api from '../api';
 const AuthContext = createContext();
 
 export default AuthContext;
+// export const AuthContext = createContext()
 
 export const AuthProvider = ({ children }) => {
     const [authTokens, setAuthTokens] = useState(() => {
