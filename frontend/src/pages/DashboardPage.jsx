@@ -5,36 +5,80 @@ import api from '../api';
 import { AuthContext } from '../context/AuthContext';
 
 const DashboardPage = () => {
-  const { user } = useContext(AuthContext); // Get the real logged-in user
+  const { user } = useContext(AuthContext); 
   const [profileData, setProfileData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch the real data from Django when the page loads
-useEffect(() => {
-  const fetchProfile = async () => {
-    try {
-      const response = await api.get('/api/accounts/profile/');
-      setProfileData(response.data);
-    } catch (error) {
-      console.error("Failed to fetch profile", error);
-    }
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const [profileRes, careersRes, skillsRes] = await Promise.all([
+          api.get('/api/accounts/profile/'),
+          api.get('/api/careers/'),
+          api.get('/api/skills/')
+        ]);
+
+        const profile = profileRes.data;
+        const careers = careersRes.data;
+        const skills = skillsRes.data;
+
+        // Map Career
+        const mappedCareer = careers.find(c => String(c.id) === String(profile.target_career));
+        profile.target_career_title = mappedCareer ? (mappedCareer.title || mappedCareer.name) : "Not Selected";
+
+        // Ultra-Resilient Skill Mapping
+        let mappedSkills = [];
+        if (Array.isArray(profile.skills) && profile.skills.length > 0) {
+          mappedSkills = profile.skills.map(skillItem => {
+            // 1. If Django sent a full object
+            if (typeof skillItem === 'object' && skillItem !== null) {
+              return skillItem.name || skillItem.title || "Unknown Skill";
+            }
+            // 2. If Django sent an ID, match it with the skills list
+            const matchedObj = skills.find(s => String(s.id) === String(skillItem));
+            if (matchedObj) {
+              return matchedObj.name || matchedObj.title;
+            }
+            // 3. Fallback if it's an unmatched ID
+            return `Skill ID: ${skillItem}`;
+          });
+        }
+        profile.skill_names = mappedSkills;
+
+        setProfileData(profile);
+      } catch (error) {
+        console.error("Failed to fetch dashboard data", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchDashboardData();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="d-flex flex-column min-vh-100 bg-soft align-items-center justify-content-center">
+        <Navbar />
+        <div className="spinner-border text-brand" role="status">
+          <span className="visually-hidden">Loading...</span>
+        </div>
+      </div>
+    );
+  }
+
+  const displayData = {
+    name: user?.username || user?.email?.split('@')[0] || "Explorer",
+    title: profileData?.target_career_title || "Aspiring Professional",
+    education: profileData?.educations?.length > 0
+      ? profileData.educations.map(e => e.stream).join(', ')
+      : "No education added",
+    experience: profileData?.experience_years ? `${profileData.experience_years} Years` : "Beginner",
   };
-  fetchProfile();
-}, []);
 
-  // Merge the real API data with fallbacks so your UI stays intact
-const displayData = {
-  name: user?.username || "Explorer",
-  title: profileData?.target_career || "Aspiring Professional",
-  education: profileData?.educations?.length > 0
-    ? profileData.educations.map(e => e.stream).join(', ')
-    : "No education added",
-  experience: profileData?.experience_years ? `${profileData.experience_years} Years` : "Beginner",
-};
+  // If this shows "No skills added yet", it means your Django serializer isn't saving them yet!
+  const currentSkills = profileData?.skill_names?.length > 0 ? profileData.skill_names : ["No skills added yet (Backend missing mapping)"];
+  const targetCareer = displayData.title;
 
-  const currentSkills = profileData?.skills || ["Python", "React", "JavaScript", "Git"];
-  const targetCareer = profileData?.target_career || "Full Stack Developer";
-
-  // MOCK DATA for now: These will be replaced by the choices they make on RoadmapPage
   const missingSkills = ["Django", "PostgreSQL", "Docker"];
   const roadmap = [
     { id: 1, title: "Master Backend with Django", type: "Course", status: "In Progress" },
@@ -49,7 +93,6 @@ const displayData = {
 
       <main className="flex-grow-1 pt-5 mt-5 pb-5">
         <div className="container">
-
           <div className="row mb-4">
             <div className="col-12">
               <h2 className="fw-bold text-dark">Welcome back, {displayData.name}! </h2>
@@ -58,10 +101,7 @@ const displayData = {
           </div>
 
           <div className="row g-4">
-            {/* LEFT COLUMN: Profile & Current Skills */}
             <div className="col-lg-4">
-
-              {/* Profile Card */}
               <div className="card border-0 shadow-sm rounded-3 mb-4 bg-white">
                 <div className="card-body p-4">
                   <div className="d-flex align-items-center mb-3">
@@ -69,7 +109,7 @@ const displayData = {
                       {displayData.name.charAt(0).toUpperCase()}
                     </div>
                     <div className="ms-3">
-                      <h5 className="fw-bold mb-0">{displayData.name}</h5>
+                      <h5 className="fw-bold mb-0 text-capitalize">{displayData.name}</h5>
                       <span className="badge bg-light text-dark border mt-1">{displayData.experience}</span>
                     </div>
                   </div>
@@ -80,7 +120,6 @@ const displayData = {
                 </div>
               </div>
 
-              {/* Current Skills Card */}
               <div className="card border-0 shadow-sm rounded-3 bg-white">
                 <div className="card-body p-4">
                   <h6 className="fw-bold mb-3">My Current Skills</h6>
@@ -91,18 +130,11 @@ const displayData = {
                       </span>
                     ))}
                   </div>
-                  <button className="btn btn-link text-brand text-decoration-none small p-0 mt-3 w-100 text-start">
-                    + Add New Skill
-                  </button>
                 </div>
               </div>
-
             </div>
 
-            {/* RIGHT COLUMN: AI Analysis & Roadmap */}
             <div className="col-lg-8">
-
-              {/* AI Skill Gap Analysis */}
               <div className="card border-0 shadow-sm rounded-3 mb-4 bg-white">
                 <div className="card-body p-4">
                   <div className="d-flex justify-content-between align-items-center mb-4">
@@ -124,11 +156,9 @@ const displayData = {
                 </div>
               </div>
 
-              {/* Personalized Roadmap */}
               <div className="card border-0 shadow-sm rounded-3 bg-white">
                 <div className="card-body p-4">
                   <h5 className="fw-bold mb-4 text-brand"> Your Learning Roadmap</h5>
-
                   <div className="roadmap-timeline">
                     {roadmap.map((step) => (
                       <div key={step.id} className="d-flex mb-3 align-items-start p-3 border rounded-3 hover-shadow-sm transition-all">
@@ -148,15 +178,12 @@ const displayData = {
                       </div>
                     ))}
                   </div>
-
                 </div>
               </div>
-
             </div>
           </div>
         </div>
       </main>
-
       <Footer />
     </div>
   );

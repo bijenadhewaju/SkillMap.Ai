@@ -1,6 +1,6 @@
 from django.contrib.auth.models import User
 from rest_framework import serializers
-from api.models import UserProfile, Education, Career
+from api.models import UserProfile, Education, Career, Skill
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_decode
 from django.utils.encoding import force_str
@@ -41,27 +41,37 @@ class ProfileSerializer(serializers.ModelSerializer):
     educations = EducationSerializer(many=True, read_only=True)
     username = serializers.CharField(source='user.username', read_only=True)
     email = serializers.CharField(source='user.email', read_only=True)
-    target_career = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     previous_role = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
     class Meta:
         model = UserProfile
-        fields = ('id', 'username', 'email', 'experience_years', 'previous_role', 'target_career', 'bio', 'educations')
+        fields = ('id', 'username', 'email', 'experience_years', 'previous_role', 'target_career', 'skills', 'bio', 'educations')
 
     def update(self, instance, validated_data):
+        # We use initial_data to easily grab the raw IDs sent from React
         raw_data = self.initial_data
 
         instance.experience_years = validated_data.get('experience_years', instance.experience_years)
         instance.previous_role = validated_data.get('previous_role', instance.previous_role)
 
-        # Convert the text (e.g. "Banker") into a Career database object
-        career_name = validated_data.get('target_career')
-        if career_name:
-            career_obj, created = Career.objects.get_or_create(title=career_name)
-            instance.target_career = career_obj
+        # 1. Handle Target Career ID
+        career_id = raw_data.get('target_career')
+        if career_id:
+            try:
+                career_obj = Career.objects.get(id=career_id)
+                instance.target_career = career_obj
+            except Career.DoesNotExist:
+                pass
 
         instance.save()
 
+        # 2. Handle Skills Array of IDs
+        skill_ids = raw_data.get('skills')
+        if skill_ids is not None:
+            # .set() automatically handles clearing old relationships and saving the new ones
+            instance.skills.set(skill_ids)
+
+        # 3. Handle Educations
         educations_data = raw_data.get('educations')
         if educations_data is not None:
             instance.educations.all().delete()

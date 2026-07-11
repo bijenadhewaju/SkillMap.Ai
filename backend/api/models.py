@@ -16,8 +16,11 @@ class UserProfile(models.Model):
 
     bio = models.TextField(blank=True, null=True)
 
+    skills = models.ManyToManyField('Skill', blank=True)
+
     def __str__(self):
         return f"{self.user.username}'s Profile"
+
 
 class Education(models.Model):
     STATUS_CHOICES = (
