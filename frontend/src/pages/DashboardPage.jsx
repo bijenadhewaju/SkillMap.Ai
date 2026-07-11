@@ -2,7 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import api from '../api';
-import AuthContext from '../context/AuthContext';
+import { AuthContext } from '../context/AuthContext';
 
 const DashboardPage = () => {
   const { user } = useContext(AuthContext); // Get the real logged-in user

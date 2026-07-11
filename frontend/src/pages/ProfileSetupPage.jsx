@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -6,6 +6,10 @@ import api from '../api';
 
 const ProfileSetupPage = () => {
   const navigate = useNavigate();
+
+  // --- New API State ---
+  const [availableCareers, setAvailableCareers] = useState([]);
+  const [availableSkills, setAvailableSkills] = useState([]);
 
   // Education State
   const [educations, setEducations] = useState([
@@ -15,21 +19,30 @@ const ProfileSetupPage = () => {
   // Experience State
   const [experience, setExperience] = useState({ years: 0, previousRole: '' });
 
-  // Target Career State
+  // Target Career State (Stores the selected Career ID)
   const [targetCareer, setTargetCareer] = useState('');
-  const careerOptions = [
-    "Software Engineer", "Graphic Designer", "Registered Nurse",
-    "Marketing Manager", "Financial Analyst", "Teacher",
-    "Data Scientist", "Project Manager"
-  ];
 
-  // Skills State (Bubbles)
+  // Skills State (Stores selected Skill Objects)
   const [skills, setSkills] = useState([]);
+  // Input for searching/adding skills from the dropdown
   const [skillInput, setSkillInput] = useState('');
-  const suggestedSkills = [
-    "Project Management", "Python", "Public Speaking",
-    "Data Analysis", "Digital Marketing", "Excel", "Leadership"
-  ];
+
+  // --- Fetch Data on Load (Correctly placed at the top level) ---
+  useEffect(() => {
+    const fetchDropdownData = async () => {
+        try {
+            const [careersResponse, skillsResponse] = await Promise.all([
+                api.get('/api/careers/'),
+                api.get('/api/skills/')
+            ]);
+            setAvailableCareers(careersResponse.data);
+            setAvailableSkills(skillsResponse.data);
+        } catch (error) {
+            console.error("Failed to fetch skills or careers", error);
+        }
+    };
+    fetchDropdownData();
+  }, []);
 
   // --- Handlers ---
   const handleAddEducation = () => {
@@ -44,34 +57,36 @@ const ProfileSetupPage = () => {
     setEducations(educations.map(edu => edu.id === id ? { ...edu, [field]: value } : edu));
   };
 
-  const handleAddSkill = (skillToAdd) => {
-    const trimmed = skillToAdd.trim();
-    if (trimmed && !skills.includes(trimmed)) {
-      setSkills([...skills, trimmed]);
+  // Modified to handle skill objects from API
+  const handleAddSkill = (skillObj) => {
+    // Check if the skill is already selected based on its ID
+    if (!skills.find(s => s.id === skillObj.id)) {
+      setSkills([...skills, skillObj]);
     }
-    setSkillInput('');
+    setSkillInput(''); // Clear input after adding
   };
 
-  const handleKeyDownSkill = (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleAddSkill(skillInput);
-    }
-  };
+  // Filter skills based on user typing
+  const filteredAvailableSkills = availableSkills.filter(skill =>
+    skill.name.toLowerCase().includes(skillInput.toLowerCase()) &&
+    !skills.find(s => s.id === skill.id) // Don't suggest already selected skills
+  );
 
-  const handleRemoveSkill = (skillToRemove) => {
-    setSkills(skills.filter(skill => skill !== skillToRemove));
+  const handleRemoveSkill = (skillIdToRemove) => {
+    setSkills(skills.filter(skill => skill.id !== skillIdToRemove));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Prepare data payload with IDs
     const finalData = {
       experience_years: experience.years,
       previous_role: experience.previousRole,
-      target_career: targetCareer,
+      target_career: parseInt(targetCareer), // Ensure it's a number (ID)
       educations: educations,
-      skills: skills
+      // Create array of just the skill IDs
+      skills: skills.map(skill => skill.id)
     };
 
     try {
@@ -99,6 +114,7 @@ const ProfileSetupPage = () => {
                   <form onSubmit={handleSubmit}>
 
                     {/* SECTION 1: EDUCATION */}
+                    {/* ... (Education section remains exactly the same) ... */}
                     <div className="mb-5 p-4 border rounded-3 bg-light bg-opacity-50">
                       <div className="d-flex justify-content-between align-items-center mb-3">
                         <h6 className="fw-bold mb-0 text-dark">Education History</h6>
@@ -136,6 +152,7 @@ const ProfileSetupPage = () => {
                     </div>
 
                     {/* SECTION 2: EXPERIENCE */}
+                    {/* ... (Experience section remains exactly the same) ... */}
                     <div className="mb-5 p-4 border rounded-3 bg-light bg-opacity-50">
                       <h6 className="fw-bold mb-3 text-dark">Work Experience</h6>
                       <div className="row g-3">
@@ -157,58 +174,66 @@ const ProfileSetupPage = () => {
                       </div>
                     </div>
 
-                    {/* SECTION 3: TARGET CAREER */}
+                    {/* SECTION 3: TARGET CAREER (Updated for API data) */}
                     <div className="mb-5">
                       <label className="form-label fw-bold text-dark">Target Career</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        list="careerOptions"
-                        placeholder="Search or type a career..."
+                      <select
+                        className="form-select"
                         value={targetCareer}
                         onChange={(e) => setTargetCareer(e.target.value)}
                         required
-                      />
-                      <datalist id="careerOptions">
-                        {careerOptions.map((career, i) => <option key={i} value={career} />)}
-                      </datalist>
+                      >
+                        <option value="" disabled>Select a career...</option>
+                        {availableCareers.map((career) => (
+                          <option key={career.id} value={career.id}>
+                            {career.title}
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
-                    {/* SECTION 4: SKILLS (CHIPS) */}
+                    {/* SECTION 4: SKILLS  */}
                     <div className="mb-5">
                       <label className="form-label fw-bold text-dark">Current Skills</label>
 
                       <div className="border rounded-3 p-2 d-flex flex-wrap gap-2 mb-3 bg-" style={{minHeight: '50px'}}>
-                        {skills.map((skill, index) => (
-                          <span key={index} className="badge bg-body-secondary text-dark rounded-pill px-3 py-2 d-flex align-items-center fw-normal fs-6">
-                            {skill}
-                            <button type="button" className="btn-close btn-close-white ms-2" style={{fontSize: '0.5rem'}} onClick={() => handleRemoveSkill(skill)}></button>
+                        {/* Display Selected Skills */}
+                        {skills.map((skill) => (
+                          <span key={skill.id} className="badge bg-body-secondary text-dark rounded-pill px-3 py-2 d-flex align-items-center fw-normal fs-6">
+                            {skill.name}
+                            <button type="button" className="btn-close btn-close-white ms-2" style={{fontSize: '0.5rem'}} onClick={() => handleRemoveSkill(skill.id)}></button>
                           </span>
                         ))}
+
                         <input
                           type="text"
                           className="border-0 flex-grow-1 p-1"
                           style={{outline: 'none', minWidth: '150px'}}
-                          placeholder="Type a skill and press Enter..."
+                          placeholder="Search and add a skill..."
                           value={skillInput}
                           onChange={(e) => setSkillInput(e.target.value)}
-                          onKeyDown={handleKeyDownSkill}
                         />
                       </div>
 
-                      <div className="d-flex flex-wrap gap-2">
-                        <span className="small text-muted mt-1 me-2">Suggestions:</span>
-                        {suggestedSkills.filter(s => !skills.includes(s)).map((skill, i) => (
-                          <span
-                            key={i}
-                            className="badge bg-light text-secondary border rounded-pill px-3 py-2 cursor-pointer transition-all hover-brand"
-                            style={{cursor: 'pointer'}}
-                            onClick={() => handleAddSkill(skill)}
-                          >
-                            + {skill}
-                          </span>
-                        ))}
-                      </div>
+                      {/* Display Suggestions based on Search */}
+                      {skillInput && filteredAvailableSkills.length > 0 && (
+                          <div className="d-flex flex-wrap gap-2 mt-2">
+                             <span className="small text-muted mt-1 me-2">Suggestions:</span>
+                             {filteredAvailableSkills.slice(0, 5).map((skill) => (
+                               <span
+                                 key={skill.id}
+                                 className="badge bg-light text-secondary border rounded-pill px-3 py-2 cursor-pointer transition-all hover-brand"
+                                 style={{cursor: 'pointer'}}
+                                 onClick={() => handleAddSkill(skill)}
+                               >
+                                 + {skill.name}
+                               </span>
+                             ))}
+                          </div>
+                      )}
+                       {skillInput && filteredAvailableSkills.length === 0 && (
+                          <div className="small text-muted mt-2">No matching skills found.</div>
+                      )}
                     </div>
 
                     <button type="submit" className="btn btn-brand w-100 py-3 fw-medium fs-5">
