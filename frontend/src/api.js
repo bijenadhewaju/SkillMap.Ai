@@ -16,4 +16,20 @@ api.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
+// Listen for responses from the backend
+api.interceptors.response.use(
+  (response) => {
+    return response;
+  },
+  (error) => {
+    // If the backend says our token is expired/invalid
+    if (error.response && error.response.status === 401) {
+      localStorage.removeItem('authTokens');
+      localStorage.removeItem('authUser');
+      window.location.href = '/login'; // Kick back to login
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default api;

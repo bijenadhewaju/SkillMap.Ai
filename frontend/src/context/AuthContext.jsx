@@ -1,10 +1,7 @@
-import { createContext, useState } from 'react';
+import { createContext, useState, useEffect } from 'react';
 import api from '../api';
 
-const AuthContext = createContext();
-
-export default AuthContext;
-// export const AuthContext = createContext()
+export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
     const [authTokens, setAuthTokens] = useState(() => {
@@ -41,7 +38,6 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    // Hits the Django backend and saves the tokens
     const loginUser = async (email, password) => {
         try {
             const response = await api.post('/api/accounts/login/', {
@@ -68,7 +64,6 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    // Logout Function: Clears state and local storage
     const logoutUser = () => {
         setAuthTokens(null);
         setUser(null);
@@ -76,7 +71,29 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem('authUser');
     };
 
-    // Make these variables and functions available to the whole app
+    // Auto-logout timer
+    useEffect(() => {
+        if (authTokens?.access) {
+            try {
+                const payload = JSON.parse(atob(authTokens.access.split('.')[1]));
+                const expirationTime = payload.exp * 1000;
+                const timeRemaining = expirationTime - Date.now();
+
+                if (timeRemaining > 0) {
+                    const logoutTimer = setTimeout(() => {
+                        logoutUser();
+                    }, timeRemaining);
+                    return () => clearTimeout(logoutTimer);
+                } else {
+                    logoutUser();
+                }
+            } catch (error) {
+                console.error("Failed to decode token", error);
+                logoutUser();
+            }
+        }
+    }, [authTokens]);
+
     const contextData = {
         user,
         authTokens,
