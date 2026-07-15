@@ -34,3 +34,6 @@ SkillMap AI is an AI-powered web application that helps students, graduates, job
 
 ### Testing
 - Pytest
+
+---
+- On active development
