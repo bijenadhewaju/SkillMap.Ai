@@ -1,0 +1,31 @@
+# IDE
+.idea/
+.vscode/
+
+# Python
+**/__pycache__/
+*.py[cod]
+.venv/
+env/
+
+# Environment
+**/.env
+.env.*
+
+# Jupyter
+.ipynb_checkpoints/
+
+# React
+frontend/node_modules/
+frontend/dist/
+frontend/package-lock.json
+
+# Django
+backend/staticfiles/
+backend/media/
+db.sqlite3
+
+# Data (if you don't want these tracked)
+backend/data/cleaned_tech_skills.csv
+backend/data/cleaned_tech_skills2.csv
+backend/notebook/cleaned_tech_skills.csv

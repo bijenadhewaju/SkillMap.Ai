@@ -45,14 +45,13 @@ class ProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UserProfile
-        fields = ('id', 'username', 'email', 'experience_years', 'previous_role', 'target_career', 'skills', 'bio', 'educations')
+        fields = ('id', 'username', 'email', 'previous_role', 'target_career', 'skills', 'bio', 'educations')
 
     def update(self, instance, validated_data):
         # We use initial_data to easily grab the raw IDs sent from React
         raw_data = self.initial_data
 
-        instance.experience_years = validated_data.get('experience_years', instance.experience_years)
-        instance.previous_role = validated_data.get('previous_role', instance.previous_role)
+        # instance.previous_role = validated_data.get('previous_role', instance.previous_role)
 
         # 1. Handle Target Career ID
         career_id = raw_data.get('target_career')

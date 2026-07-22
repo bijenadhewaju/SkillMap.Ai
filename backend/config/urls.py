@@ -26,10 +26,10 @@ urlpatterns = [
 
     # Custom Accounts Endpoints (Registration, Profile)
     path('api/accounts/', include('accounts.urls')),
-    # API endpoints
-    path('api/', include('api.urls')),
-
-    # JWT Login Endpoints
+    # JWT Login Endpoints (place before the generic api include so specific auth routes are reachable)
     path('api/accounts/login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/accounts/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+
+    # API endpoints (generic)
+    path('api/', include('api.urls')),
 ]

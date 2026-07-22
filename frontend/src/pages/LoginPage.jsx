@@ -6,7 +6,7 @@ import { AuthContext } from '../context/AuthContext';
 
 const LoginPage = () => {
   const [formData, setFormData] = useState({
-    email: '', // Using username for Django JWT auth
+    email: '',
     password: ''
   });
 
@@ -22,7 +22,6 @@ const LoginPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Call the global login function
     const result = await loginUser(formData.email, formData.password);
 
     if (result.success) {
@@ -41,7 +40,7 @@ const LoginPage = () => {
           <div className="row justify-content-center">
             <div className="col-md-6 col-lg-5 col-xl-4">
 
-              <div className="card border-0 shadow-sm rounded-3 p-4 bg-white">
+              <div className="card border-0 shadow-sm p-4 bg-white">
                 <div className="card-body">
                   <h3 className="fw-bold text-center text-brand mb-1">Welcome Back</h3>
                   <p className="text-center text-secondary mb-4 small">Log in to continue your learning journey.</p>
@@ -50,11 +49,10 @@ const LoginPage = () => {
 
                   <form onSubmit={handleSubmit}>
                     <div className="mb-3">
-                      {/* 3. Update the label and input to Email */}
                       <label className="form-label fw-medium text-dark small">Email Address</label>
                       <input
                         type="email"
-                        className="form-control"
+                        className="form-control bg-soft border-0"
                         name="email"
                         value={formData.email}
                         onChange={handleChange}
@@ -70,7 +68,7 @@ const LoginPage = () => {
                       </div>
                       <input
                         type="password"
-                        className="form-control"
+                        className="form-control bg-soft border-0"
                         name="password"
                         value={formData.password}
                         onChange={handleChange}
