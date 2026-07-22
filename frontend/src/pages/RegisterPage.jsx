@@ -31,17 +31,13 @@ const RegisterPage = () => {
     }
 
     try {
-      // 1. Create the account in Django
       await api.post('/api/accounts/register/', {
         username: formData.username,
         email: formData.email,
         password: formData.password
       });
 
-      // 2. Automatically log the user in
       await loginUser(formData.username, formData.password);
-
-      // 3. Send them to setup their profile
       navigate('/profile-setup');
     } catch (err) {
       setError('Failed to register. Username or email might already be taken.');
@@ -57,7 +53,7 @@ const RegisterPage = () => {
           <div className="row justify-content-center">
             <div className="col-md-6 col-lg-5">
 
-              <div className="card border-0 shadow-sm rounded-3 p-4 bg-white">
+              <div className="card border-0 shadow-sm p-4 bg-white">
                 <div className="card-body">
                   <h3 className="fw-bold text-center text-brand mb-1">Create an Account</h3>
                   <p className="text-center text-secondary mb-4 small">Start mapping your tech career today.</p>
@@ -69,7 +65,7 @@ const RegisterPage = () => {
                       <label className="form-label fw-medium text-dark small">Username</label>
                       <input
                         type="text"
-                        className="form-control"
+                        className="form-control bg-soft border-0"
                         name="username"
                         value={formData.username}
                         onChange={handleChange}
@@ -82,7 +78,7 @@ const RegisterPage = () => {
                       <label className="form-label fw-medium text-dark small">Email Address</label>
                       <input
                         type="email"
-                        className="form-control"
+                        className="form-control bg-soft border-0"
                         name="email"
                         value={formData.email}
                         onChange={handleChange}
@@ -96,7 +92,7 @@ const RegisterPage = () => {
                         <label className="form-label fw-medium text-dark small">Password</label>
                         <input
                           type="password"
-                          className="form-control"
+                          className="form-control bg-soft border-0"
                           name="password"
                           value={formData.password}
                           onChange={handleChange}
@@ -109,7 +105,7 @@ const RegisterPage = () => {
                         <label className="form-label fw-medium text-dark small">Confirm Password</label>
                         <input
                           type="password"
-                          className="form-control"
+                          className="form-control bg-soft border-0"
                           name="confirmPassword"
                           value={formData.confirmPassword}
                           onChange={handleChange}

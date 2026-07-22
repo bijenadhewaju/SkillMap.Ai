@@ -1,13 +1,18 @@
 import React, { useState, useEffect, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import api from '../api';
 import { AuthContext } from '../context/AuthContext';
 
 const DashboardPage = () => {
-  const { user } = useContext(AuthContext); 
+  const { user } = useContext(AuthContext);
+  const navigate = useNavigate();
   const [profileData, setProfileData] = useState(null);
+  const [roadmapData, setRoadmapData] = useState(null);
+  const [allDbSkills, setAllDbSkills] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isUpdatingSync, setIsUpdatingSync] = useState(false);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -22,30 +27,37 @@ const DashboardPage = () => {
         const careers = careersRes.data;
         const skills = skillsRes.data;
 
-        // Map Career
+        setAllDbSkills(skills);
+
         const mappedCareer = careers.find(c => String(c.id) === String(profile.target_career));
-        profile.target_career_title = mappedCareer ? (mappedCareer.title || mappedCareer.name) : "Not Selected";
+        const targetCareerTitle = mappedCareer ? mappedCareer.title : "Software Developer";
+        profile.target_career_title = targetCareerTitle;
 
-        // Ultra-Resilient Skill Mapping
-        let mappedSkills = [];
-        if (Array.isArray(profile.skills) && profile.skills.length > 0) {
-          mappedSkills = profile.skills.map(skillItem => {
-            // 1. If Django sent a full object
-            if (typeof skillItem === 'object' && skillItem !== null) {
-              return skillItem.name || skillItem.title || "Unknown Skill";
-            }
-            // 2. If Django sent an ID, match it with the skills list
-            const matchedObj = skills.find(s => String(s.id) === String(skillItem));
-            if (matchedObj) {
-              return matchedObj.name || matchedObj.title;
-            }
-            // 3. Fallback if it's an unmatched ID
-            return `Skill ID: ${skillItem}`;
-          });
+        let userSkillNames = [];
+        if (Array.isArray(profile.skills)) {
+          userSkillNames = profile.skills.map(skillItem => {
+            if (typeof skillItem === 'object' && skillItem !== null) return skillItem.name;
+            const matched = skills.find(s => String(s.id) === String(skillItem));
+            return matched ? matched.name : '';
+          }).filter(Boolean);
         }
-        profile.skill_names = mappedSkills;
-
+        profile.skill_names = userSkillNames;
         setProfileData(profile);
+
+        const cachedRoadmap = localStorage.getItem('userRoadmap');
+
+        if (cachedRoadmap) {
+          setRoadmapData(JSON.parse(cachedRoadmap));
+        } else {
+          const roadmapRes = await api.post('/api/generate-roadmap/', {
+            target_role: targetCareerTitle,
+            experience_level: "Fresher",
+            user_skills: userSkillNames
+          });
+          setRoadmapData(roadmapRes.data);
+          localStorage.setItem('userRoadmap', JSON.stringify(roadmapRes.data));
+        }
+
       } catch (error) {
         console.error("Failed to fetch dashboard data", error);
       } finally {
@@ -54,6 +66,47 @@ const DashboardPage = () => {
     };
     fetchDashboardData();
   }, []);
+
+  const handleCompleteSkill = async (skillNameToComplete) => {
+    if (isUpdatingSync) return;
+    setIsUpdatingSync(true);
+
+    try {
+      const skillObj = allDbSkills.find(s => s.name === skillNameToComplete);
+      if (!skillObj) {
+        console.error("Skill not found in database list");
+        setIsUpdatingSync(false);
+        return;
+      }
+
+      const currentSkillIds = (profileData.skill_names || []).map(name => {
+        const found = allDbSkills.find(s => s.name === name);
+        return found ? found.id : null;
+      }).filter(Boolean);
+
+      const newSkillIds = [...currentSkillIds, skillObj.id];
+
+      await api.patch('/api/accounts/profile/', {
+        skills: newSkillIds
+      });
+
+      const updatedMissing = roadmapData.missing_skills.filter(s => s !== skillNameToComplete);
+      const updatedCurrent = [...(profileData.skill_names || []), skillNameToComplete];
+      const newMatch = Math.min(100, (roadmapData.match_percentage || 0) + 15);
+
+      setRoadmapData({...roadmapData, missing_skills: updatedMissing, match_percentage: newMatch});
+      setProfileData({...profileData, skill_names: updatedCurrent});
+
+      const updatedRoadmap = {...roadmapData, missing_skills: updatedMissing, match_percentage: newMatch};
+      localStorage.setItem('userRoadmap', JSON.stringify(updatedRoadmap));
+
+    } catch (error) {
+      console.error("Error saving skill to database", error);
+      alert("Failed to save skill. Please try again.");
+    } finally {
+      setIsUpdatingSync(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -67,117 +120,118 @@ const DashboardPage = () => {
   }
 
   const displayData = {
-    name: user?.username || user?.email?.split('@')[0] || "Explorer",
+    name: user?.username || "Explorer",
     title: profileData?.target_career_title || "Aspiring Professional",
     education: profileData?.educations?.length > 0
       ? profileData.educations.map(e => e.stream).join(', ')
       : "No education added",
-    experience: profileData?.experience_years ? `${profileData.experience_years} Years` : "Beginner",
+    experience: "Fresher",
   };
 
-  // If this shows "No skills added yet", it means your Django serializer isn't saving them yet!
-  const currentSkills = profileData?.skill_names?.length > 0 ? profileData.skill_names : ["No skills added yet (Backend missing mapping)"];
-  const targetCareer = displayData.title;
-
-  const missingSkills = ["Django", "PostgreSQL", "Docker"];
-  const roadmap = [
-    { id: 1, title: "Master Backend with Django", type: "Course", status: "In Progress" },
-    { id: 2, title: "Build a REST API", type: "Project", status: "Pending" },
-    { id: 3, title: "Database Design with PostgreSQL", type: "Course", status: "Pending" },
-    { id: 4, title: "Containerize with Docker", type: "Project", status: "Pending" }
-  ];
+  const currentSkills = profileData?.skill_names?.length > 0 ? profileData.skill_names : ["No skills added yet"];
+  const missingSkills = roadmapData?.missing_skills || [];
+  const studyModules = roadmapData?.study_plan?.roadmap || [];
 
   return (
     <div className="d-flex flex-column min-vh-100 bg-soft">
       <Navbar />
 
       <main className="flex-grow-1 pt-5 mt-5 pb-5">
-        <div className="container">
-          <div className="row mb-4">
+        <div className="container py-4">
+          <div className="row mb-5">
             <div className="col-12">
-              <h2 className="fw-bold text-dark">Welcome back, {displayData.name}! </h2>
-              <p className="text-secondary">Here is your personalized skill map and learning progress.</p>
+              <h2 className="fw-bold text-brand fs-1">Welcome back, {displayData.name}!</h2>
+              <p className="text-secondary fs-5">Here is your personalized skill map and live career analysis.</p>
             </div>
           </div>
 
           <div className="row g-4">
+            {/* Sidebar info */}
             <div className="col-lg-4">
-              <div className="card border-0 shadow-sm rounded-3 mb-4 bg-white">
-                <div className="card-body p-4">
-                  <div className="d-flex align-items-center mb-3">
-                    <div className="bg-brand-dark text-white rounded-circle d-flex align-items-center justify-content-center fw-bold fs-4" style={{width: '60px', height: '60px'}}>
-                      {displayData.name.charAt(0).toUpperCase()}
-                    </div>
-                    <div className="ms-3">
-                      <h5 className="fw-bold mb-0 text-capitalize">{displayData.name}</h5>
-                      <span className="badge bg-light text-dark border mt-1">{displayData.experience}</span>
-                    </div>
+              <div className="card border-0 shadow-sm mb-4 bg-white p-4">
+                <div className="d-flex align-items-center mb-3">
+                  <div className="bg-brand text-white d-flex align-items-center justify-content-center fw-bold fs-3" style={{width: '60px', height: '60px'}}>
+                    {displayData.name.charAt(0).toUpperCase()}
                   </div>
-                  <hr className="text-muted" />
-                  <p className="small text-secondary mb-1"><strong>Education:</strong> {displayData.education}</p>
-                  <p className="small text-secondary mb-0"><strong>Target:</strong> {displayData.title}</p>
-                  <button className="btn btn-outline-brand btn-sm w-100 mt-3">Edit Profile</button>
+                  <div className="ms-3">
+                    <h5 className="fw-bold mb-0 text-capitalize text-dark">{displayData.name}</h5>
+                    <span className="badge bg-soft text-dark border-0 mt-1 fw-normal">{displayData.experience}</span>
+                  </div>
                 </div>
+                <hr className="text-muted" />
+                <p className="small text-secondary mb-1"><strong>Education:</strong> {displayData.education}</p>
+                <p className="small text-secondary mb-0"><strong>Target:</strong> {displayData.title}</p>
+                <button className="btn btn-outline-brand btn-sm w-100 mt-3" onClick={() => navigate('/profile-setup')}>Edit Profile</button>
               </div>
 
-              <div className="card border-0 shadow-sm rounded-3 bg-white">
-                <div className="card-body p-4">
-                  <h6 className="fw-bold mb-3">My Current Skills</h6>
-                  <div className="d-flex flex-wrap gap-2">
-                    {currentSkills.map((skill, index) => (
-                      <span key={index} className="badge bg-light text-dark border px-3 py-2 rounded-pill fw-normal">
-                        {skill}
-                      </span>
-                    ))}
-                  </div>
+              <div className="card border-0 shadow-sm bg-white p-4">
+                <h6 className="fw-bold text-brand mb-3">My Earned Skills</h6>
+                <div className="d-flex flex-wrap gap-2">
+                  {currentSkills.map((skill, index) => (
+                    <span key={index} className="skill-badge px-3 py-2 fw-normal">
+                      ✓ {skill}
+                    </span>
+                  ))}
                 </div>
               </div>
             </div>
 
+            {/* Main content */}
             <div className="col-lg-8">
-              <div className="card border-0 shadow-sm rounded-3 mb-4 bg-white">
-                <div className="card-body p-4">
-                  <div className="d-flex justify-content-between align-items-center mb-4">
-                    <h5 className="fw-bold mb-0 text-brand">AI Skill Gap Analysis</h5>
-                    <span className="badge bg-soft text-brand border border-primary">Target: {targetCareer}</span>
-                  </div>
 
-                  <div className="p-3 bg-soft rounded-3 border border-danger border-opacity-25">
-                    <h6 className="fw-bold text-danger mb-2">Missing Competencies Identified</h6>
-                    <p className="small text-secondary mb-3">Based on industry requirements for a {targetCareer}, our AI suggests you need to acquire the following skills:</p>
-                    <div className="d-flex flex-wrap gap-2">
-                      {missingSkills.map((skill, index) => (
-                        <span key={index} className="badge bg-danger bg-opacity-10 text-danger border border-danger px-3 py-2 rounded-pill fw-normal">
-                          {skill}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
+              {/* Gamified Checklist UI */}
+              <div className="card border-0 shadow-sm mb-4 bg-white p-4">
+                <div className="d-flex justify-content-between align-items-center mb-4">
+                  <h5 className="fw-bold text-brand mb-0">Missing Competencies</h5>
+                  <span className="badge bg-brand text-white px-3 py-2 fw-medium">Target Match: {roadmapData?.match_percentage || 0}%</span>
                 </div>
-              </div>
 
-              <div className="card border-0 shadow-sm rounded-3 bg-white">
-                <div className="card-body p-4">
-                  <h5 className="fw-bold mb-4 text-brand"> Your Learning Roadmap</h5>
-                  <div className="roadmap-timeline">
-                    {roadmap.map((step) => (
-                      <div key={step.id} className="d-flex mb-3 align-items-start p-3 border rounded-3 hover-shadow-sm transition-all">
-                        <div className={`me-3 mt-1 ${step.status === 'In Progress' ? 'text-warning' : 'text-secondary'}`}>
-                          {step.status === 'In Progress' ? '⏳' : '⭕'}
-                        </div>
-                        <div className="flex-grow-1">
-                          <h6 className="fw-bold mb-1">{step.title}</h6>
-                          <div className="d-flex align-items-center gap-2 mt-1">
-                            <span className={`badge ${step.type === 'Course' ? 'bg-primary' : 'bg-success'} bg-opacity-10 text-dark border px-2 py-1 small fw-normal`}>
-                              {step.type}
-                            </span>
-                            <span className="small text-muted">• {step.status}</span>
+                {missingSkills.length > 0 ? (
+                  <div>
+                    {missingSkills.map((skill, index) => (
+                      <button
+                        key={index}
+                        onClick={() => handleCompleteSkill(skill)}
+                        disabled={isUpdatingSync}
+                        className="w-100 text-start border-0 bg-transparent p-0 mb-3"
+                      >
+                        <div className="d-flex justify-content-between align-items-center p-3 bg-soft border-0" style={{ cursor: isUpdatingSync ? 'wait' : 'pointer' }}>
+                          <div className="d-flex align-items-center">
+                            <div className="bg-white border d-flex justify-content-center align-items-center me-3" style={{width: '24px', height: '24px'}}>
+                              <span style={{opacity: 0.1}}>✓</span>
+                            </div>
+                            <span className="fw-medium text-dark">{skill}</span>
                           </div>
+                          <span className="badge-subtle px-3 py-2 fw-medium">Mark as Learned +</span>
                         </div>
-                        <button className="btn btn-brand btn-sm px-3 py-1">View</button>
-                      </div>
+                      </button>
                     ))}
                   </div>
+                ) : (
+                  <div className="p-5 text-center bg-soft border border-brand mt-3">
+                    <h4 className="fw-bold text-brand mb-2">100% Skill Match!</h4>
+                    <p className="text-secondary mb-0">You have successfully gained all the skills required for {displayData.title}. You are ready to apply for roles.</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Roadmap UI */}
+              <div className="card border-0 shadow-sm bg-white p-4">
+                <h5 className="fw-bold text-brand mb-4">Your Action Plan</h5>
+                <div>
+                  {studyModules.length > 0 ? studyModules.map((module, index) => (
+                    <div key={index} className="mb-3 p-4 bg-soft border-start border-brand">
+                      <h6 className="fw-bold text-brand mb-2">Phase {index + 1}: {module.focus}</h6>
+                      <p className="small text-secondary mb-3">{module.objective}</p>
+                      <div className="d-flex flex-wrap gap-2">
+                        {module.action_items?.map((action, aIdx) => (
+                          <span key={aIdx} className="badge bg-white text-dark border px-3 py-2 small fw-normal">
+                            {action}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )) : <p className="text-secondary small">No plan generated yet.</p>}
                 </div>
               </div>
             </div>
