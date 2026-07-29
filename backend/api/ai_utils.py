@@ -14,9 +14,13 @@ from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 
 # Load embedding model
-hf_token = os.getenv("HF_TOKEN")
+# hf_token = os.getenv("HF_TOKEN")
+# print("Loading Hugging Face model (all-MiniLM-L6-v2)...")
+# embedding_model = SentenceTransformer("all-MiniLM-L6-v2", token=hf_token)
+
 print("Loading Hugging Face model (all-MiniLM-L6-v2)...")
-embedding_model = SentenceTransformer("all-MiniLM-L6-v2", token=hf_token)
+# No token needed for this public model
+embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
 
 # Gemini client
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
