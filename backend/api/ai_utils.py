@@ -1,5 +1,6 @@
 import os
 import json
+import requests
 import pandas as pd
 import numpy as np
 
@@ -9,20 +10,25 @@ from .models import Career, Skill
 
 from google import genai
 from google.genai import types
-
-from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 
-# Load embedding model
-# hf_token = os.getenv("HF_TOKEN")
-# print("Loading Hugging Face model (all-MiniLM-L6-v2)...")
-# embedding_model = SentenceTransformer("all-MiniLM-L6-v2", token=hf_token)
+# HUGGING FACE API SETUP
+HF_TOKEN = os.getenv("HF_TOKEN")
+HF_API_URL = "https://api-inference.huggingface.co/models/sentence-transformers/all-MiniLM-L6-v2"
 
-print("Loading Hugging Face model (all-MiniLM-L6-v2)...")
-# No token needed for this public model
-embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
 
-# Gemini client
+def get_embeddings(text_list):
+    """Fetches embeddings remotely to save server memory."""
+    headers = {"Authorization": f"Bearer {HF_TOKEN}"}
+    response = requests.post(HF_API_URL, headers=headers, json={"inputs": text_list})
+
+    if response.status_code != 200:
+        print(f"Hugging Face API Error: {response.text}")
+        return []
+
+    return response.json()
+
+# GEMINI CLIENT SETUP
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 
@@ -34,7 +40,6 @@ def generate_study_plan_with_gemini(missing_skills, target_role, experience_tier
     """
     Uses Gemini to generate skill-focused learning modules for detected skill gaps.
     """
-
     if not missing_skills:
         return {
             "message": "You already have all the required skills for this role!"
@@ -92,15 +97,12 @@ Return ONLY valid JSON matching this exact structure:
                 temperature=0.4,
             ),
         )
-
         return json.loads(response.text)
 
     except Exception as e:
         print("⚠️ Gemini Error / Rate Limit Hit:", e)
         print("🔄 Generating Dynamic Fallback Roadmap...")
 
-        # DYNAMIC FALLBACK: If the API fails, we dynamically build a roadmap
-        # using the actual missing skills detected by your local embedding model!
         fallback_roadmap = []
         for skill in missing_skills:
             formatted_skill = str(skill).title()
@@ -124,7 +126,6 @@ Return ONLY valid JSON matching this exact structure:
                 ]
             })
 
-        # Return the exact structure React is expecting
         return {
             "roadmap": fallback_roadmap
         }
@@ -143,21 +144,30 @@ def get_career_roadmap(target_title, experience_level, user_skills):
     except ObjectDoesNotExist:
         return {"error": f"Career '{target_title}' at '{experience_level}' level not found in the database."}
 
-    # 2. Get all required skills linked to this career via the CareerSkill mapping table
     required_skills_query = career.required_skills.select_related('skill').all()
     required_skills = [cs.skill.name.lower().strip() for cs in required_skills_query]
 
     if not required_skills:
         return {"error": f"No skills have been assigned to '{target_title}' in the database yet."}
 
-    # 3. Compare against User Skills
     if not user_skills:
         missing_skills = required_skills
         overall_match = 0
         already_known_or_similar = []
     else:
-        user_embeddings = embedding_model.encode(user_skills)
-        required_embeddings = embedding_model.encode(required_skills)
+        # 1. Fetch embeddings via API instead of local model
+        user_embeddings_data = get_embeddings(user_skills)
+        required_embeddings_data = get_embeddings(required_skills)
+
+        # Handle potential API failures gracefully
+        if not user_embeddings_data or not required_embeddings_data:
+            return {"error": "Failed to fetch skill embeddings from Hugging Face API."}
+
+        # 2. Convert API response lists into NumPy arrays for sklearn
+        user_embeddings = np.array(user_embeddings_data)
+        required_embeddings = np.array(required_embeddings_data)
+
+        # 3. Calculate Similarity
         similarity_matrix = cosine_similarity(required_embeddings, user_embeddings)
 
         missing_skills = []
@@ -173,7 +183,6 @@ def get_career_roadmap(target_title, experience_level, user_skills):
         overall_match = round(np.mean(match_scores) * 100)
         already_known_or_similar = [s for s in required_skills if s not in missing_skills]
 
-    # 4. Generate the Roadmap using Gemini (or the dynamic fallback if it fails)
     study_plan = generate_study_plan_with_gemini(missing_skills, target_title, experience_level)
 
     return {
