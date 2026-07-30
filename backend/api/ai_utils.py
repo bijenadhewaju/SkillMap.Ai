@@ -1,8 +1,7 @@
 import os
 import json
 import requests
-import pandas as pd
-import numpy as np
+import math
 
 from django.core.exceptions import ObjectDoesNotExist
 from django.conf import settings
@@ -10,7 +9,6 @@ from .models import Career, Skill
 
 from google import genai
 from google.genai import types
-from sklearn.metrics.pairwise import cosine_similarity
 
 # HUGGING FACE API SETUP
 HF_TOKEN = os.getenv("HF_TOKEN")
@@ -28,6 +26,16 @@ def get_embeddings(text_list):
 
     return response.json()
 
+
+def calculate_cosine_similarity(vec1, vec2):
+    """Calculates cosine similarity between two lists of floats without numpy/scipy."""
+    dot_product = sum(a * b for a, b in zip(vec1, vec2))
+    mag1 = math.sqrt(sum(a * a for a in vec1))
+    mag2 = math.sqrt(sum(b * b for b in vec2))
+    if mag1 == 0 or mag2 == 0:
+        return 0.0
+    return dot_product / (mag1 * mag2)
+
 # GEMINI CLIENT SETUP
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
@@ -37,13 +45,8 @@ def get_cleaned_data_path():
 
 
 def generate_study_plan_with_gemini(missing_skills, target_role, experience_tier):
-    """
-    Uses Gemini to generate skill-focused learning modules for detected skill gaps.
-    """
     if not missing_skills:
-        return {
-            "message": "You already have all the required skills for this role!"
-        }
+        return {"message": "You already have all the required skills for this role!"}
 
     prompt = f"""
 You are an expert software engineering career mentor for SkillMap AI.
@@ -87,7 +90,6 @@ Return ONLY valid JSON matching this exact structure:
   ]
 }}
 """
-
     try:
         response = client.models.generate_content(
             model="gemini-2.5-flash",
@@ -101,8 +103,6 @@ Return ONLY valid JSON matching this exact structure:
 
     except Exception as e:
         print("⚠️ Gemini Error / Rate Limit Hit:", e)
-        print("🔄 Generating Dynamic Fallback Roadmap...")
-
         fallback_roadmap = []
         for skill in missing_skills:
             formatted_skill = str(skill).title()
@@ -125,17 +125,10 @@ Return ONLY valid JSON matching this exact structure:
                     f"Build a small, self-contained project integrating {formatted_skill} to demonstrate competency."
                 ]
             })
-
-        return {
-            "roadmap": fallback_roadmap
-        }
+        return {"roadmap": fallback_roadmap}
 
 
 def get_career_roadmap(target_title, experience_level, user_skills):
-    """
-    Compares user skills against target career requirements using the Django Database,
-    then leverages Gemini to generate a personalized learning roadmap.
-    """
     try:
         career = Career.objects.get(
             title__iexact=target_title,
@@ -155,32 +148,30 @@ def get_career_roadmap(target_title, experience_level, user_skills):
         overall_match = 0
         already_known_or_similar = []
     else:
-        # 1. Fetch embeddings via API instead of local model
         user_embeddings_data = get_embeddings(user_skills)
         required_embeddings_data = get_embeddings(required_skills)
 
-        # Handle potential API failures gracefully
         if not user_embeddings_data or not required_embeddings_data:
             return {"error": "Failed to fetch skill embeddings from Hugging Face API."}
-
-        # 2. Convert API response lists into NumPy arrays for sklearn
-        user_embeddings = np.array(user_embeddings_data)
-        required_embeddings = np.array(required_embeddings_data)
-
-        # 3. Calculate Similarity
-        similarity_matrix = cosine_similarity(required_embeddings, user_embeddings)
 
         missing_skills = []
         match_scores = []
 
         for i, req_skill in enumerate(required_skills):
-            best_match_score = np.max(similarity_matrix[i])
+            req_vec = required_embeddings_data[i]
+
+            best_match_score = 0
+            for user_vec in user_embeddings_data:
+                sim = calculate_cosine_similarity(req_vec, user_vec)
+                if sim > best_match_score:
+                    best_match_score = sim
+
             match_scores.append(best_match_score)
 
             if best_match_score < 0.65:
                 missing_skills.append(req_skill)
 
-        overall_match = round(np.mean(match_scores) * 100)
+        overall_match = round((sum(match_scores) / len(match_scores)) * 100) if match_scores else 0
         already_known_or_similar = [s for s in required_skills if s not in missing_skills]
 
     study_plan = generate_study_plan_with_gemini(missing_skills, target_title, experience_level)
