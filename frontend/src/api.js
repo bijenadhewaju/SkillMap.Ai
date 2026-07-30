@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-    baseURL: 'http://127.0.0.1:8000',
+    baseURL: import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000',
 });
 
 // Intercept every request BEFORE it leaves the frontend
@@ -22,11 +22,10 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
-    // If the backend says our token is expired/invalid
     if (error.response && error.response.status === 401) {
       localStorage.removeItem('authTokens');
       localStorage.removeItem('authUser');
-      window.location.href = '/login'; // Kick back to login
+      window.location.href = '/login';
     }
     return Promise.reject(error);
   }

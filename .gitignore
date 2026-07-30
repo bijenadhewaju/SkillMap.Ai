@@ -20,6 +20,7 @@ backend/venv
 frontend/node_modules/
 frontend/dist/
 frontend/package-lock.json
+frontend/.env
 
 # Django
 backend/staticfiles/
