@@ -141,6 +141,35 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # CORS Configuration (Allows React to talk to Django)
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:5173",
+]
+
+# Add Vercel frontend URL if set in environment
+VERCEL_FRONTEND = os.getenv("VERCEL_FRONTEND")
+if VERCEL_FRONTEND:
+    CORS_ALLOWED_ORIGINS.append(VERCEL_FRONTEND)
+
+# In development, allow all origins from localhost
+CORS_ALLOW_ALL_ORIGINS = DEBUG
+
+# CORS Methods and Headers
+CORS_ALLOW_METHODS = [
+    "DELETE",
+    "GET",
+    "OPTIONS",
+    "PATCH",
+    "POST",
+    "PUT",
+]
+
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "authorization",
+    "content-type",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
 ]
 
 # Django REST Framework Configuration
@@ -170,21 +199,6 @@ AUTHENTICATION_BACKENDS = [
     'accounts.backends.EmailAuthBackend',
 ]
 
-CORS_ALLOW_ALL_ORIGINS = DEBUG
-
-VERCEL_FRONTEND = os.getenv("VERCEL_FRONTEND")
-
-if VERCEL_FRONTEND:
-    CORS_ALLOWED_ORIGINS.append(VERCEL_FRONTEND)
-
-CORS_ALLOW_HEADERS = [
-    "accept",
-    "authorization",
-    "content-type",
-    "user-agent",
-    "x-csrftoken",
-    "x-requested-with",
-]
 
 if not DEBUG:
     SECURE_SSL_REDIRECT = True
